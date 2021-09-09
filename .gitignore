@@ -20,6 +20,14 @@
 *.tar
 *.zip
 
+# VSCode #
+##########
+.vscode/
+
+# SSH keys #
+############
+*.pem
+
 # Logs and databases #
 ######################
 *.log
@@ -42,4 +50,8 @@ Thumbs.db
 *.backup
 *.log
 *.tfstate
-.terraform
+*.tfstate.backup
+*.tfstate.lock.info
+*.bak
+.terraform/
+.vagrant/
