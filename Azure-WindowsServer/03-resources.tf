@@ -1,8 +1,8 @@
 variable "resourceGroupName" {}
 variable "location" {}
-variable "vnetName" {}}
-variable "vnet01AddressSpace" {}}
-variable "vmName" {}}
+variable "vnetName" {}
+variable "vnet01AddressSpace" {}
+variable "vmName" {}
 
 data "http" "myExtIp" {
   url = "http://ident.me/"
@@ -37,7 +37,7 @@ resource "azurerm_network_security_group" "securityGroup" {
   location            = var.location
 
   security_rule {
-    name                       = "MyRDPIn"
+    name                       = "RDPIn_FromMyDesktop"
     description                = "Allow my external IP in to 3389"
     protocol                   = "tcp"
     priority                   = 110
@@ -45,6 +45,19 @@ resource "azurerm_network_security_group" "securityGroup" {
     access                     = "Allow"
     source_port_range          = "*"
     destination_port_range     = "3389"
+    source_address_prefix      = data.http.myExtIp.body
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "SSHIn_FromMyDesktop"
+    description                = "Allow my external IP in to 22"
+    protocol                   = "tcp"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    source_port_range          = "*"
+    destination_port_range     = "22"
     source_address_prefix      = data.http.myExtIp.body
     destination_address_prefix = "*"
   }
@@ -71,7 +84,7 @@ resource "azurerm_network_interface" "Nic01" {
     public_ip_address_id          = azurerm_public_ip.pip01.id
   }
 
-  depends_on = [azurerm_virtual_network.vnet01, azurerm_public_ip.pip01]
+  depends_on = [azurerm_public_ip.pip01]
 }
 
 resource "azurerm_public_ip" "pip01" {
@@ -79,6 +92,8 @@ resource "azurerm_public_ip" "pip01" {
   resource_group_name = var.resourceGroupName
   location            = var.location
   allocation_method   = "Dynamic"
+
+  depends_on = [azurerm_virtual_network.vnet01]
 }
 
 resource "azurerm_windows_virtual_machine" "Server" {
@@ -106,3 +121,39 @@ resource "azurerm_windows_virtual_machine" "Server" {
 
   depends_on = [azurerm_virtual_network.vnet01, azurerm_network_interface.Nic01]
 }
+
+resource "azurerm_virtual_machine_extension" "software" {
+  name                 = "install-software"
+  virtual_machine_id   = azurerm_windows_virtual_machine.Server.id
+  publisher            = "Microsoft.Compute"
+  type                 = "CustomScriptExtension"
+  type_handler_version = "1.9"
+
+  protected_settings = <<SETTINGS
+  {
+     "commandToExecute": "powershell -encodedCommand ${textencodebase64(file("setup.ps1"), "UTF-16LE")}"
+  }
+  SETTINGS
+
+  depends_on = [azurerm_windows_virtual_machine.Server]
+}
+
+
+# resource "azurerm_virtual_machine_extension" "software" {
+#   name                 = "install-software"
+#   resource_group_name  = azurerm_resource_group.azrg.name
+#   virtual_machine_id   = azurerm_virtual_machine.vm.id
+#   publisher            = "Microsoft.Compute"
+#   type                 = "CustomScriptExtension"
+#   type_handler_version = "1.9"
+
+#   protected_settings = <<SETTINGS
+#   {
+#     "commandToExecute": "powershell -command \"[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64encode(data.template_file.tf.rendered)}')) | Out-File -filepath install.ps1\" && powershell -ExecutionPolicy Unrestricted -File install.ps1"
+#   }
+#   SETTINGS
+# }
+
+# data "template_file" "tf" {
+#     template = "${file("install.ps1")}"
+# } 

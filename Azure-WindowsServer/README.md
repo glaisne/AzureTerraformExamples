@@ -12,7 +12,7 @@ Confirm the current context:
 az account list --query "[?isDefault]"
 
 # To use this, add the SubscriptionId and TenantId to the command line with:
- --var 'SubscriptionId=<SubscrpitionID>' and --var 'TenantId=<tenantId>'
+ --var 'subscriptionId=<SubscrpitionID>' and --var 'tenantId=<tenantId>'
 
 Don't forget to update the variables in the terraform.tfvars to work with your environment.
 
